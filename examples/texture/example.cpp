@@ -23,7 +23,7 @@ int main()
 
 	// Create a gsDriver with default settings
 	// (320x240 32bit, double-buffer, zbuffer allocated, alpha enabled)
-	gsDriver myGsDriver;	
+	gsDriver myGsDriver(NTSC);
 
 	myGsDriver.drawPipe.setAlphaEnable(GS_ENABLE);
 

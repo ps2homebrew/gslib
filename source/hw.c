@@ -78,7 +78,9 @@ void DmaReset()
 void SendDma02(void* DmaTag)
 {
 	
-	__asm__("	li $3, 0x1000a000");	__asm__("	sw $4, 0x0030($3)");
+	__asm__("	li $3, 0x1000a000");
+
+	__asm__("	sw $4, 0x0030($3)");
 	__asm__("	sw $0, 0x0020($3)");
 	__asm__("	lw $2, 0x0000($3)");
 	__asm__("	ori $2, 0x0105");

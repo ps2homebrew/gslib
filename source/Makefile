@@ -1,5 +1,6 @@
 OBJS =  gsDriver.o \
 	gsPipe.o \
+	gsVram.o \
 	gsFont.o \
 	hw.o
 

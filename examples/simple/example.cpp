@@ -1,11 +1,30 @@
+#include <stdio.h>
 #include <tamtypes.h>
 #include <kernel.h>
+#include <osd_config.h>
 
 #include "gsDefs.h"
 #include "gsDriver.h"
 #include "gsPipe.h"
 
-extern int* _args;
+// This function is to demonstrate how to automatically determine a
+// mode to use on a PS2 depending on its type.
+// All European PS2 romnames have a 'E' as the 4th character
+// and therefore should use a PAL display setting
+gsMode getMode(void)
+{
+	char romname[14];
+
+	GetRomName((char *)romname);
+	if (romname[4] == 'E') {
+		free(romname);
+		return PAL;
+	}
+	else {
+		free(romname);
+		return NTSC;
+	}
+}
 
 int main(int argc, char **argv)
 {
@@ -16,7 +35,7 @@ int main(int argc, char **argv)
 
 	// Create a gsDriver with default settings
 	// (320x240 32bit, double-buffer, zbuffer allocated, alpha enabled)
-	gsDriver myGsDriver;
+	gsDriver myGsDriver(getMode());
 
 	myGsDriver.drawPipe.setAlphaEnable(GS_ENABLE);
 

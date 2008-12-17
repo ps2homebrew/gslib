@@ -8,6 +8,7 @@
 
 //global vsync counter
 volatile int vsync_num;
+volatile int vsync_updates;
 int frame_num;
 
 // Create a global pointer to a gsDriver, so it can be called from the vsync callback
@@ -38,14 +39,14 @@ int main()
 {
 	// Setup Display Mode
 	// (320x240 32bit, 5 display buffers, zbuffer allocated, alpha enabled)
-	pMyGsDriver = new gsDriver;
+	pMyGsDriver = new gsDriver(NTSC);
 
 	printf("\n2 out of 4 frames will take upto 2 frame-times to draw !\n\n");
 	printf("First lets try it with a conventional double-buffer ...\n");
 
-	pMyGsDriver->setDisplayMode(320, 240, 85, 42,
-		GS_PSMCT32, 2, GS_TV_AUTO, GS_TV_NONINTERLACE,
-		GS_ENABLE, GS_PSMZ32);
+	pMyGsDriver->setDisplayMode(320, 240,
+				    NTSC, NONINTERLACE, GS_PSMCT32,
+				    GS_ENABLE, GS_PSMZ32, 2);
 
 	pMyGsDriver->drawPipe.setAlphaEnable(GS_ENABLE);
 
@@ -55,9 +56,9 @@ int main()
 
 	printf("Now lets try it with 4 frame buffers ...\n");
 
-	pMyGsDriver->setDisplayMode(320, 240, 85, 42, 
-		GS_PSMCT32, 4, GS_TV_AUTO, GS_TV_NONINTERLACE,
-		GS_ENABLE, GS_PSMZ32);
+	pMyGsDriver->setDisplayMode(320, 240,
+				    NTSC, NONINTERLACE, GS_PSMCT32,
+				    GS_ENABLE, GS_PSMZ32, 4);
 
 	pMyGsDriver->drawPipe.setAlphaEnable(GS_ENABLE);
 
@@ -75,7 +76,7 @@ int main()
 	render_main();
 
 	printf("We have managed to rendered %d out of %d frames,\n", frame_num, vsync_num);
-	printf("despite 2 out of every 4 frames taking upto 2 frame-times to render !\n");
+	printf("despite 2 out of every 4 frames taking up to 2 frame-times to render !\n");
 
 	printf("\n(frame numbers may be out by one due to time taken\n"
 		"to enable/disable vsync callback function\n");
@@ -98,7 +99,7 @@ void render_main(void)
 	vsync_num=0;
 
     // Do rendering for 500 vsyncs
-	while (vsync_num<500)
+	while (vsync_num<1000)
 	{
         // Clear the screen (with ZBuffer Disabled)
 		pMyGsDriver->drawPipe.setZTestEnable(GS_DISABLE);

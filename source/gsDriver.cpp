@@ -16,35 +16,41 @@
 #include "gsDefs.h"
 #include "gsDriver.h"
 
-void InitGraph(int interlace, int mode);
+void InitGraphFrame(int interlace, int mode);
+void InitGraphField(int interlace, int mode);
 
-gsDriver::gsDriver()
+gsDriver::gsDriver(gsMode mode)
 {
 	// Default to 2 buffers of 320x240x32bit with a 32bit ZBuffer
-	setDisplayMode(320, 240, 85, 42, 
-		GS_PSMCT32, 2, GS_TV_AUTO, GS_TV_NONINTERLACE,
-		GS_ENABLE, GS_PSMZ32);
+	setDisplayMode(320, 240, mode, NONINTERLACE, GS_PSMCT32,
+			GS_ENABLE, GS_PSMZ32, 2);
 }
 
 gsDriver::~gsDriver()
 {
 }
 
+//void gsDriver::setDisplayMode(unsigned int width, unsigned int height,
+//						   unsigned int xpos, unsigned int ypos,
+//						   unsigned int psm, unsigned int num_bufs,
+//						   unsigned int TVmode, unsigned int TVinterlace,
+//						   unsigned int zbuffer, unsigned int zpsm)
+
 void gsDriver::setDisplayMode(unsigned int width, unsigned int height,
-						   unsigned int xpos, unsigned int ypos,
-						   unsigned int psm, unsigned int num_bufs,
-						   unsigned int TVmode, unsigned int TVinterlace,
-						   unsigned int zbuffer, unsigned int zpsm)
+		gsMode mode, gsInterlace interlace,
+		unsigned int psm, unsigned int zbuffer,
+		unsigned int zpsm, unsigned int num_bufs)
 {
 
 	// should put some boundary condition checking in here
 	if (num_bufs < 1)
 		num_bufs = 1; // we also need at least 1 frame buffer (should we set a max ?)
 
-	m_FrameWidth = width & 0xFFC0; // must be a multiple of 64
+
+	m_DisplayMode = mode;
+	m_InterlaceMode = interlace;
+	m_FrameWidth = width;// & 0xFFC0; // must be a multiple of 64
 	m_FrameHeight = height;
-	m_FrameXpos = xpos;
-	m_FrameYpos = ypos;
 	m_FramePSM = psm;
 	m_NumFrameBuffers = num_bufs;
 	m_ZBuffer = zbuffer & 0x01;
@@ -105,7 +111,21 @@ void gsDriver::setDisplayMode(unsigned int width, unsigned int height,
 	__asm__("	syscall");
 	__asm__("	nop");
 
-	InitGraph(TVinterlace, TVmode);
+	switch (m_InterlaceMode) {
+		case NONINTERLACE:
+			InitGraphField(0,m_DisplayMode);
+			break;
+		case FRAME:
+			InitGraphFrame(1,m_DisplayMode);
+			break;
+		case FIELD:
+			InitGraphField(1,m_DisplayMode);
+			break;
+	}
+
+	setFrameOffsets();
+	setFrameMagnification();
+	setFrameArea();
 
 	// Now actually setup GS (from GS_SetDispMode)
 	__asm__(" di ");
@@ -113,12 +133,13 @@ void gsDriver::setDisplayMode(unsigned int width, unsigned int height,
 	// GS_PMODE = 0xFF60;	// Read Circuit disabled
 	GS_PMODE = 0xFF61; // Read Circuit Enabled
 
-	GS_DISPLAY1 =  GS_SET_DISPLAY(m_FrameWidth, m_FrameHeight, m_FrameXpos, m_FrameYpos);
+	//GS_DISPLAY1 = GS_SET_DISPLAY1(m_FrameWidth, m_FrameHeight, m_FrameXpos, m_FrameYpos);
+
+	setDisplayPosition(m_FrameDX, m_FrameDY);
 
 	GS_BGCOLOUR = 0x000000; // Set the BGCOLOUR to black (overridable by user)
 
 	__asm__(" ei ");
-
 
 	// Set Current Display and Draw Buffers
 	setDisplayBuffer(m_CurrentDisplayBuffer);
@@ -143,12 +164,27 @@ void gsDriver::setDisplayMode(unsigned int width, unsigned int height,
 
 void gsDriver::setDisplayPosition(unsigned int xpos, unsigned int ypos)
 {
-	m_FrameXpos = xpos;
-	m_FrameYpos = ypos;
+	m_FrameDX = xpos;
+	m_FrameDY = ypos;
 
-	GS_DISPLAY1 =  GS_SET_DISPLAY(m_FrameWidth, m_FrameHeight, m_FrameXpos, m_FrameYpos);
+	GS_DISPLAY1 = GS_SET_DISPLAY1(m_FrameDX,	// X position in the display area (in VCK units)
+				      m_FrameDY,	// Y position in the display area (in Raster units)
+				      m_FrameMAGH,	// Horizontal Magnification
+				      m_FrameMAGV,	// Vertical Magnification
+				      m_FrameDW,	// Display area width
+				      m_FrameDH);	// Display area height
+
 }
 
+unsigned int gsDriver::getDisplayXPosition()
+{
+	return m_FrameDX;
+}
+
+unsigned int gsDriver::getDisplayYPosition()
+{
+	return m_FrameDY;
+}
 
 void gsDriver::clearScreen(void)
 {
@@ -160,11 +196,22 @@ void gsDriver::clearScreen(void)
 	swapBuffers();
 }
 
-
-
 // Why doesn't this work if part of a C++ class ?
 // (yet it does work inside a C++ module)
-void InitGraph(int interlace, int mode)
+
+void InitGraphFrame(int interlace, int mode)
+{
+	__asm__(" # sceSetGSCrt ");
+	__asm__("	ori $6, $0, 1           # frame mode");
+	__asm__("	addiu $3, $0, 2");
+	__asm__("	syscall");
+	__asm__("	nop");
+
+	return;
+}
+
+
+void InitGraphField(int interlace, int mode)
 {
 	__asm__(" # sceSetGSCrt ");
 	__asm__("	ori $6, $0, 0           # field mode");
@@ -281,7 +328,7 @@ void gsDriver::DisplayNextFrame(void)
 
 void gsDriver::setDisplayBuffer(unsigned int buf_num)
 {
-	GS_DISPFB1 = GS_SET_DISPFB(getFrameBufferBase(buf_num), m_FrameWidth, m_FramePSM, 0, 0);
+	GS_DISPFB1 = GS_SET_DISPFB1(getFrameBufferBase(buf_num), m_FrameWidth, m_FramePSM, 0, 0);
 }
 
 void gsDriver::setDrawBuffer(unsigned int buf_num)
@@ -289,6 +336,166 @@ void gsDriver::setDrawBuffer(unsigned int buf_num)
 	drawPipe.Flush();
 	drawPipe.setDrawFrame(getFrameBufferBase(buf_num), m_FrameWidth, m_FramePSM, 0);
 	drawPipe.Flush();
+}
+
+void gsDriver::setFrameOffsets(void)
+{
+	switch (m_DisplayMode) {
+		case NTSC:
+			m_FrameDX = 652;
+			m_FrameDY = 26;
+			break;
+		case PAL:
+			m_FrameDX = 680;
+			m_FrameDY = 37;
+			break;
+		case VGA640_60:
+			m_FrameDX = 280;
+			m_FrameDY = 18;
+			break;
+		case VGA640_72:
+			m_FrameDX = 330;
+			m_FrameDY = 18;
+			break;
+		case VGA640_75:
+			m_FrameDX = 360;
+			m_FrameDY = 18;
+			break;
+		case VGA640_85:
+			m_FrameDX = 260;
+			m_FrameDY = 18;
+			break;
+		case VGA800_56:
+			m_FrameDX = 450;
+			m_FrameDY = 25;
+			break;
+		case VGA800_60:
+		case VGA800_72:
+			m_FrameDX = 465;
+			m_FrameDY = 25;
+			break;
+		case VGA800_75:
+			m_FrameDX = 510;
+			m_FrameDY = 25;
+			break;
+		case VGA800_85:
+			m_FrameDX = 500;
+			m_FrameDY = 25;
+			break;
+		case VGA1024_60:
+			m_FrameDX = 580;
+			m_FrameDY = 30;
+			break;
+		case VGA1024_70:
+			m_FrameDX = 266;
+			m_FrameDY = 30;
+			break;
+		case VGA1024_75:
+			m_FrameDX = 260;
+			m_FrameDY = 30;
+			break;
+		case VGA1024_85:
+			m_FrameDX = 290;
+			m_FrameDY = 30;
+			break;
+		case VGA1280_60:
+		case VGA1280_75:
+			m_FrameDX = 350;
+			m_FrameDY = 40;
+			break;
+		case DTV480P:
+			m_FrameDX = 232;
+			m_FrameDY = 35;
+			break;
+		case DTV720P:
+			m_FrameDX = 420;
+			m_FrameDY = 40;
+			break;
+	        case DTV1080I:
+			m_FrameDX = 300;
+			m_FrameDY = 120;
+			break;
+	}
+
+	if (m_InterlaceMode == FIELD)
+		m_FrameDY = (m_FrameDY - 1) * 2;
+}
+
+void gsDriver::setFrameMagnification()
+{
+	switch (m_DisplayMode) {
+		case NTSC:
+		case PAL:
+			switch (m_FrameWidth) {
+				case 256:
+					m_FrameMAGH = 9;
+					break;
+				case 320:
+					m_FrameMAGH = 7;
+					break;
+				case 384:
+					m_FrameMAGH = 6;
+					break;
+				case 512:
+					m_FrameMAGH = 4;
+					break;
+				case 640:
+					m_FrameMAGH = 3;
+					break;
+			}
+			break;
+		case VGA1024_70:
+		case VGA1024_75:
+		case VGA1024_85:
+		case VGA1280_60:
+		case VGA1280_75:
+		case DTV720P:
+	        case DTV1080I:
+			m_FrameMAGH = 0;
+			break;
+		default:
+			m_FrameMAGH = 1;
+			break;
+	}
+
+	switch (m_DisplayMode) {
+	        case DTV1080I:
+			switch (m_InterlaceMode) {
+				case FRAME:
+					m_FrameMAGV = 0;
+					break;
+				case FIELD:
+					m_FrameMAGV = 1;
+					break;
+				}
+			break;
+		default:
+			m_FrameMAGV = 0;
+			break;
+	}
+}
+
+void gsDriver::setFrameArea()
+{
+	switch (m_DisplayMode) {
+		case PAL:
+		case NTSC:
+			m_FrameDW = 2559;
+			break;
+		case VGA1024_70:
+		case VGA1024_75:
+		case VGA1024_85:
+		case VGA1280_60:
+		case VGA1280_75:
+		case DTV720P:
+		case DTV1080I:
+			m_FrameDW = m_FrameWidth - 1;
+			break;
+		default:
+			m_FrameDW = (m_FrameWidth * 2) - 1;
+	}
+
+	m_FrameDH = m_FrameHeight - 1;
 }
 
 // Returns the ID of the VSync Callback
@@ -319,6 +526,7 @@ unsigned int gsDriver::AddVSyncCallback(void (*func_ptr)())
 
 	asm __volatile__ ("	ei");
 
+
 //		la $4, AddCallbackID	# Store ID in var
 //		sw $2, 0($4)
 
@@ -339,12 +547,14 @@ void gsDriver::RemoveVSyncCallback(unsigned int RemoveID)
 	asm __volatile__ ("	syscall");
 	asm __volatile__ ("	nop");
 	asm __volatile__ ("	ei");
+
 }
 
 void gsDriver::EnableVSyncCallbacks(void)
 {
 
 	asm __volatile__ ("	di");
+
 	asm __volatile__ ("	addiu $4, $0, 2	 ");
 	asm __volatile__ ("	addiu $3, $0, 20");
 
@@ -352,6 +562,7 @@ void gsDriver::EnableVSyncCallbacks(void)
 	asm __volatile__ ("	nop");
 
 	asm __volatile__ ("	ei");
+
 }
 
 void gsDriver::DisableVSyncCallbacks(void)
@@ -366,4 +577,6 @@ void gsDriver::DisableVSyncCallbacks(void)
 
 
 	asm __volatile__ ("	ei");
+
 }
+

@@ -23,12 +23,14 @@ int main()
 
 	// Create a gsDriver with default settings
 	// (320x240 32bit, double-buffer, zbuffer allocated, alpha enabled)
-	gsDriver myGsDriver;
+	gsDriver myGsDriver(NTSC);
 
 	// Change to hi-res so can fit more of our 16x16 font on screen
-	myGsDriver.setDisplayMode(640, 480, 170, 80, 
-		GS_PSMCT32, 2, GS_TV_AUTO, GS_TV_INTERLACE,
-		GS_ENABLE, GS_PSMZ32);	
+	myGsDriver.setDisplayMode(640, 480,
+				  NTSC, FIELD,
+				  GS_PSMCT32,
+				  GS_ENABLE, GS_PSMZ32,
+				  2);
 
 	gsFont myFont;
 

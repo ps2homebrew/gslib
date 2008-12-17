@@ -8,7 +8,7 @@ int main()
 {
 	// Create a gsDriver with default settings
 	// (320x240 32bit, double-buffer, zbuffer allocated, alpha enabled)
-	gsDriver myGsDriver;	
+	gsDriver myGsDriver(NTSC);
 
 	// Lets try creating our own gsPipe, and using both at the same time
 	// we must ReInit() each pipe when switching between them

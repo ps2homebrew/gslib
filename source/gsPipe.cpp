@@ -464,9 +464,11 @@ void gsPipe::TextureUpload(unsigned int TBP, int TBW, int xofs, int yofs,
     case GS_PSMCT32:
 		numq = (numq >> 2) + ((numq & 0x03) != 0 ? 1 : 0);
 		break;
+
 	case GS_PSMCT24:
 		numq = (numq / 3)  + ((numq & 0x02) != 0 ? 1 : 0);
 		break;
+
 	case GS_PSMCT16:
 	case GS_PSMCT16S:
 		numq = (numq >> 3) + ((numq & 0x07) != 0 ? 1 : 0);
@@ -515,6 +517,7 @@ void gsPipe::TextureUpload(unsigned int TBP, int TBW, int xofs, int yofs,
 		numq -= currq;
 		tex += (currq * 16);
 	}
+
 	FlushCheck();
 	TextureFlush();
 }
@@ -556,9 +559,11 @@ void gsPipe::TextureDownload(unsigned int TBP, int TBW, int xofs, int yofs, int 
     case GS_PSMCT32:
 		numq = (numq >> 2) + ((numq & 0x03) != 0 ? 1 : 0);
 		break;
+
 	case GS_PSMCT24:
 		numq = (numq / 3)  + ((numq & 0x02) != 0 ? 1 : 0);
 		break;
+
 	case GS_PSMCT16:
 	case GS_PSMCT16S:
 		numq = (numq >> 3) + ((numq & 0x07) != 0 ? 1 : 0);
@@ -607,6 +612,7 @@ void gsPipe::TextureDownload(unsigned int TBP, int TBW, int xofs, int yofs, int 
 		numq -= currq;
 		tex += (currq * 16);
 	}
+
 	FlushCheck();
 	TextureFlush();
 }
@@ -636,7 +642,6 @@ void gsPipe::setFilterMethod(int FilterMethod)
 
 void gsPipe::TextureSet(unsigned int tbp, int tbw, gsTexSize texwidth, gsTexSize texheight, u32 tpsm, u32 cbp, u32 csm, u32 cbw, u32 cpsm)
 {
-
 	unsigned long dt = *m_CurrentDmaAddr;
 	*(m_CurrentDmaAddr) = (dt & 0xffffffffffff0000) | ((dt & 0xffff) + 9);
 
@@ -654,7 +659,6 @@ void gsPipe::TextureSet(unsigned int tbp, int tbw, gsTexSize texwidth, gsTexSize
 
 	m_CurrentGifTag[8] = GS_SET_TEX1(0, 0, m_FilterMethod, m_FilterMethod, 0, 0, 0);
     m_CurrentGifTag[9] = GS_REG_TEX1_1;			// tex1_1
-
 																				// Should TCC be 0 or 1 ? (was/is 1)
 	m_CurrentGifTag[10]= GS_SET_TEX0(tbp/256, tbw/64, tpsm, texwidth, texheight, 1, 0, cbp/256, cpsm, csm, 0, 1);
 	m_CurrentGifTag[11]= GS_REG_TEX0_1;			// tex0_1

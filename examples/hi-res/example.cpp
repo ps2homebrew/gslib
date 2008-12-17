@@ -14,18 +14,17 @@ int main()
 
 	// Create a gsDriver with custom settings
 	// (640x480 32bit, double-buffer, zbuffer allocated, alpha enabled)
-	gsDriver myGsDriver;
+	gsDriver myGsDriver(NTSC);
 	
-	myGsDriver.setDisplayMode(640, 480, 170, 80, 
-		GS_PSMCT32, 2, GS_TV_AUTO, GS_TV_INTERLACE,
-		GS_ENABLE, GS_PSMZ32);	
+	myGsDriver.setDisplayMode(640, 480,
+				  NTSC, FIELD,
+				  GS_PSMCT32,
+				  GS_ENABLE, GS_PSMZ32,
+				  2);
 
 	myGsDriver.drawPipe.setAlphaEnable(GS_ENABLE);
 	// Won't bother creating our own gsPipe, since we can use the one created by our gsDriver
 	// gsPipe myGsPipe;
-
-
-
 
 	while (1)
 	{
